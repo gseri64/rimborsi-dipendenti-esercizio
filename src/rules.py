@@ -21,6 +21,11 @@ MASSIMALE_NOTTE = 170.00
 PLAFOND_MENSILE = 1400.00
 LAVORO_AGILE_MAX_GIORNI_MESE = 12
 
+# Riduzione progressiva trasferta estera >5 giorni (Sezione 4, Circolare 18/2026)
+ESTERO_TASSO_PIENO = 85.00        # giorni 1-5
+ESTERO_TASSO_RIDOTTO_10 = 76.50   # giorni 6-10  (85 × 0.90)
+ESTERO_TASSO_RIDOTTO_20 = 68.00   # giorni 11+   (85 × 0.80)
+
 # Massimali previgenti fino al 31/12/2025 (Circolare n. 41/2024)
 MASSIMALI_GIORNALIERI_2025 = {
     "trasferta_italia": 46.48,

@@ -24,15 +24,16 @@ def _intero(valore):
 def _registra(form):
     """Valida, calcola e registra una nuova richiesta. Restituisce la richiesta salvata."""
     richieste = storage.carica()
+    categoria = form.get("categoria") or ""
     richiesta = {
         "id": storage.prossimo_id(richieste),
         "dipendente": (form.get("dipendente") or "").strip(),
         "data": form.get("data") or "",
-        "categoria": form.get("categoria") or "",
+        "categoria": categoria,
         "importo": _numero(form.get("importo")),
-        "giorni": _intero(form.get("giorni")),
-        "km": _numero(form.get("km")),
-        "notti": _intero(form.get("notti")),
+        "giorni": _intero(form.get("giorni")) if categoria in rules.CATEGORIE_A_GIORNATE else None,
+        "km": _numero(form.get("km")) if categoria == "chilometrico" else None,
+        "notti": _intero(form.get("notti")) if categoria == "alloggio" else None,
     }
     ok, motivazione = validator.valida(richiesta)
     if ok:
@@ -145,4 +146,5 @@ def normativa():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    import os
+    app.run(debug=os.environ.get("FLASK_DEBUG", "0") == "1")

@@ -14,7 +14,12 @@ def _massimale_estero_2026(giorni):
     g1 = min(giorni, 5)
     g2 = min(max(giorni - 5, 0), 5)
     g3 = max(giorni - 10, 0)
-    return round(g1 * 85.00 + g2 * 76.50 + g3 * 68.00, 2)
+    return round(
+        g1 * rules.ESTERO_TASSO_PIENO
+        + g2 * rules.ESTERO_TASSO_RIDOTTO_10
+        + g3 * rules.ESTERO_TASSO_RIDOTTO_20,
+        2,
+    )
 
 
 def massimale_teorico(richiesta, giorni_agile_gia_usati=0):
@@ -67,7 +72,8 @@ def calcola(richiesta, esente_gia_riconosciuta, giorni_agile_gia_usati=0):
     imponibile = round(importo - esente, 2)
     dettaglio = {
         "massimale_teorico": teorico,
-        "esente_teorica": round(esente_teorica, 2),
+        "esente_teorica": round(esente_teorica, 2),   # prima del cap plafond
+        "esente_effettiva": round(esente, 2),          # dopo il cap plafond
         "capienza_plafond": round(capienza, 2),
     }
     return esente, imponibile, dettaglio

@@ -25,7 +25,7 @@ def valida(richiesta):
 
     # lavoro_agile non ammesso per giornate anteriori al 01/01/2026
     if categoria == "lavoro_agile" and data_richiesta < rules.DATA_DECORRENZA_2026:
-        return False, "categoria non riconosciuta"
+        return False, "categoria lavoro_agile non ammessa per date anteriori al 01/01/2026"
 
     if categoria in rules.CATEGORIE_A_GIORNATE:
         giorni = richiesta.get("giorni")
@@ -47,8 +47,10 @@ def valida(richiesta):
 
 def _giorni_coperti(richiesta):
     """Insieme delle date coperte da una richiesta a giornate (trasferta o lavoro agile)."""
+    giorni = richiesta.get("giorni") or 0
+    if giorni <= 0:
+        return set()
     data = date.fromisoformat(richiesta["data"])
-    giorni = richiesta.get("giorni") or 1
     return {data + timedelta(days=i) for i in range(giorni)}
 
 

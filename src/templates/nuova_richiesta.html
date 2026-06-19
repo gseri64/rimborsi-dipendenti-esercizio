@@ -12,8 +12,11 @@
     {% if esito.dettaglio %}
     <ul class="dettaglio-calcolo">
       <li>Massimale applicabile: {{ "%.2f"|format(esito.dettaglio.massimale_teorico) }} €</li>
-      <li>Quota esente teorica: {{ "%.2f"|format(esito.dettaglio.esente_teorica) }} €</li>
+      <li>Quota esente teorica (ante plafond): {{ "%.2f"|format(esito.dettaglio.esente_teorica) }} €</li>
       <li>Capienza residua plafond mensile: {{ "%.2f"|format(esito.dettaglio.capienza_plafond) }} €</li>
+      {% if esito.dettaglio.esente_effettiva != esito.dettaglio.esente_teorica %}
+      <li><strong>Quota esente effettiva (post plafond): {{ "%.2f"|format(esito.dettaglio.esente_effettiva) }} €</strong></li>
+      {% endif %}
     </ul>
     {% endif %}
   </div>
@@ -106,6 +109,14 @@
 
     if (!regola) { box.style.display = "none"; return; }
 
+    // Mostra/nascondi campi pertinenti alla categoria (BUG-M6)
+    const campoGiorni = document.querySelector("[data-campo='giorni']");
+    const campoKm     = document.querySelector("[data-campo='km']");
+    const campoNotti  = document.querySelector("[data-campo='notti']");
+    campoGiorni.hidden = !["giorno", "giorno_estero", "giorno_agile"].includes(regola.tipo);
+    campoKm.hidden     = regola.tipo !== "km";
+    campoNotti.hidden  = regola.tipo !== "notte";
+
     box.style.display = "block";
     divNota.textContent = "";
     divTot.textContent = "";
@@ -119,7 +130,7 @@
       divNota.textContent = "Trasferta estera >5 gg: riduzione 10% dal 6° giorno, 20% dall'11° giorno.";
     }
     if (regola.tipo === "giorno_agile") {
-      divNota.textContent = `Massimo ${regola.maxGiorni} giornate esenti per mese di calendario.`;
+      divNota.textContent = `Massimo ${regola.maxGiorni} giornate esenti per mese di calendario (il sistema applica il residuo effettivo).`;
     }
 
     // Totale se la quantità è già inserita
@@ -140,17 +151,23 @@
     }
 
     if (totale !== null) {
+      const importo = parseFloat(document.querySelector("input[name='importo']").value) || 0;
       divTot.textContent = `Massimale totale: ${totale.toFixed(2)} €`;
+      if (importo > 0 && importo > totale) {
+        divTot.textContent += ` — l'importo supera il massimale di ${(importo - totale).toFixed(2)} €`;
+        divTot.style.color = "#b00";
+      } else {
+        divTot.style.color = "";
+      }
     }
   }
 
-  ["categoria", "data", "giorni", "km", "notti"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener("change", aggiorna);
+  ["categoria", "data", "giorni", "km", "notti", "importo"].forEach(id => {
+    const el = id === "importo"
+      ? document.querySelector("input[name='importo']")
+      : document.getElementById(id);
+    if (el) { el.addEventListener("change", aggiorna); el.addEventListener("input", aggiorna); }
   });
-  document.getElementById("giorni").addEventListener("input", aggiorna);
-  document.getElementById("km").addEventListener("input", aggiorna);
-  document.getElementById("notti").addEventListener("input", aggiorna);
 })();
 </script>
 {% endblock %}
