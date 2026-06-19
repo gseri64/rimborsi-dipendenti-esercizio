@@ -36,10 +36,13 @@ def _registra(form):
     }
     ok, motivazione = validator.valida(richiesta)
     if ok:
-        gia_riconosciuta = storage.esente_riconosciuta_nel_mese(
-            richieste, richiesta["dipendente"], storage.mese(richiesta)
-        )
-        esente, imponibile, dettaglio = calculator.calcola(richiesta, gia_riconosciuta)
+        ok, motivazione = validator.controlla_incompatibilita(richiesta, richieste)
+    if ok:
+        mese_rif = storage.mese(richiesta)
+        dipendente = richiesta["dipendente"]
+        gia_riconosciuta = storage.esente_riconosciuta_nel_mese(richieste, dipendente, mese_rif)
+        giorni_agile = storage.giorni_agile_nel_mese(richieste, dipendente, mese_rif)
+        esente, imponibile, dettaglio = calculator.calcola(richiesta, gia_riconosciuta, giorni_agile)
         richiesta.update(
             stato="valida",
             motivazione="",
@@ -70,7 +73,7 @@ def nuova_richiesta():
     esito = None
     if request.method == "POST":
         esito = _registra(request.form)
-    return render_template("nuova_richiesta.html", categorie=rules.CATEGORIE, esito=esito)
+    return render_template("nuova_richiesta.html", categorie=rules.CATEGORIE, esito=esito, rules=rules)
 
 
 @app.get("/richieste")
@@ -118,13 +121,21 @@ def riepilogo():
             "imponibile": dati["imponibile"],
             "richieste": dati["richieste"],
             "percentuale_plafond": min(
-                round(dati["esente"] / rules.PLAFOND_MENSILE * 100), 100
+                round(
+                    dati["esente"]
+                    / (rules.PLAFOND_MENSILE if mese >= "2026-01" else rules.PLAFOND_MENSILE_2025)
+                    * 100
+                ),
+                100,
             ),
         }
         for (mese, dipendente), dati in sorted(gruppi.items(), reverse=True)
     ]
     return render_template(
-        "riepilogo.html", righe=righe, plafond=rules.PLAFOND_MENSILE
+        "riepilogo.html",
+        righe=righe,
+        plafond=rules.PLAFOND_MENSILE,
+        plafond_2025=rules.PLAFOND_MENSILE_2025,
     )
 
 

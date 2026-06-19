@@ -29,7 +29,7 @@
     <input type="text" name="dipendente" required placeholder="Nome e cognome">
   </label>
   <label>Data di sostenimento
-    <input type="date" name="data" required>
+    <input type="date" name="data" id="data" required>
   </label>
   <label>Categoria
     <select name="categoria" id="categoria" required>
@@ -42,14 +42,115 @@
     <input type="number" name="importo" step="0.01" min="0" required>
   </label>
   <label data-campo="giorni">Numero di giornate
-    <input type="number" name="giorni" min="1" step="1">
+    <input type="number" name="giorni" id="giorni" min="1" step="1">
   </label>
   <label data-campo="km" hidden>Chilometri percorsi
-    <input type="number" name="km" min="1" step="1">
+    <input type="number" name="km" id="km" min="1" step="1">
   </label>
   <label data-campo="notti" hidden>Numero di notti
-    <input type="number" name="notti" min="1" step="1">
+    <input type="number" name="notti" id="notti" min="1" step="1">
   </label>
+
+  <div id="info-massimale" class="scheda" style="background:var(--sfondo-alt,#f5f5f5);padding:.75rem 1rem;margin-top:.5rem;display:none;">
+    <strong>Massimale di esenzione</strong>
+    <div id="info-unitario" style="margin-top:.25rem;"></div>
+    <div id="info-totale" style="margin-top:.25rem;font-weight:bold;"></div>
+    <div id="info-nota" style="margin-top:.25rem;font-size:.85em;color:#666;"></div>
+  </div>
+
   <button type="submit">Registra richiesta</button>
 </form>
+
+<script>
+(function () {
+  // Massimali 2026
+  const M26 = {
+    trasferta_italia: { tipo: "giorno", tasso: {{ rules.MASSIMALI_GIORNALIERI.trasferta_italia }} },
+    trasferta_estero: { tipo: "giorno_estero", tasso: {{ rules.MASSIMALI_GIORNALIERI.trasferta_estero }} },
+    pasto:            { tipo: "giorno", tasso: {{ rules.MASSIMALI_GIORNALIERI.pasto }} },
+    lavoro_agile:     { tipo: "giorno_agile", tasso: {{ rules.MASSIMALI_GIORNALIERI.lavoro_agile }}, maxGiorni: {{ rules.LAVORO_AGILE_MAX_GIORNI_MESE }} },
+    chilometrico:     { tipo: "km", tasso: {{ rules.MASSIMALE_KM }} },
+    alloggio:         { tipo: "notte", tasso: {{ rules.MASSIMALE_NOTTE }} },
+  };
+  // Massimali 2025
+  const M25 = {
+    trasferta_italia: { tipo: "giorno", tasso: {{ rules.MASSIMALI_GIORNALIERI_2025.trasferta_italia }} },
+    trasferta_estero: { tipo: "giorno", tasso: {{ rules.MASSIMALI_GIORNALIERI_2025.trasferta_estero }} },
+    pasto:            { tipo: "giorno", tasso: {{ rules.MASSIMALI_GIORNALIERI_2025.pasto }} },
+    chilometrico:     { tipo: "km", tasso: {{ rules.MASSIMALE_KM_2025 }} },
+    alloggio:         { tipo: "notte", tasso: {{ rules.MASSIMALE_NOTTE_2025 }} },
+  };
+
+  const soglia2026 = "2026-01-01";
+
+  function massimaleEstero2026(g) {
+    const g1 = Math.min(g, 5);
+    const g2 = Math.min(Math.max(g - 5, 0), 5);
+    const g3 = Math.max(g - 10, 0);
+    return g1 * 85.00 + g2 * 76.50 + g3 * 68.00;
+  }
+
+  function aggiorna() {
+    const cat = document.getElementById("categoria").value;
+    const data = document.getElementById("data").value;
+    const box = document.getElementById("info-massimale");
+    const divUnit = document.getElementById("info-unitario");
+    const divTot = document.getElementById("info-totale");
+    const divNota = document.getElementById("info-nota");
+
+    if (!cat || !data) { box.style.display = "none"; return; }
+
+    const is2026 = data >= soglia2026;
+    const tabella = is2026 ? M26 : M25;
+    const regola = tabella[cat];
+
+    if (!regola) { box.style.display = "none"; return; }
+
+    box.style.display = "block";
+    divNota.textContent = "";
+    divTot.textContent = "";
+
+    // Riga unitaria
+    const unita = { giorno: "giorno", giorno_estero: "giorno", giorno_agile: "giorno", km: "km", notte: "notte" }[regola.tipo];
+    divUnit.textContent = `Tasso unitario: ${regola.tasso.toFixed(2)} € / ${unita}`;
+
+    // Note speciali
+    if (regola.tipo === "giorno_estero" && is2026) {
+      divNota.textContent = "Trasferta estera >5 gg: riduzione 10% dal 6° giorno, 20% dall'11° giorno.";
+    }
+    if (regola.tipo === "giorno_agile") {
+      divNota.textContent = `Massimo ${regola.maxGiorni} giornate esenti per mese di calendario.`;
+    }
+
+    // Totale se la quantità è già inserita
+    const giorni = parseInt(document.getElementById("giorni").value) || 0;
+    const km     = parseFloat(document.getElementById("km").value) || 0;
+    const notti  = parseInt(document.getElementById("notti").value) || 0;
+
+    let totale = null;
+    if (regola.tipo === "giorno_estero" && is2026 && giorni > 0) {
+      totale = massimaleEstero2026(giorni);
+    } else if ((regola.tipo === "giorno" || regola.tipo === "giorno_agile") && giorni > 0) {
+      const giorniEff = regola.tipo === "giorno_agile" ? Math.min(giorni, regola.maxGiorni) : giorni;
+      totale = regola.tasso * giorniEff;
+    } else if (regola.tipo === "km" && km > 0) {
+      totale = regola.tasso * km;
+    } else if (regola.tipo === "notte" && notti > 0) {
+      totale = regola.tasso * notti;
+    }
+
+    if (totale !== null) {
+      divTot.textContent = `Massimale totale: ${totale.toFixed(2)} €`;
+    }
+  }
+
+  ["categoria", "data", "giorni", "km", "notti"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("change", aggiorna);
+  });
+  document.getElementById("giorni").addEventListener("input", aggiorna);
+  document.getElementById("km").addEventListener("input", aggiorna);
+  document.getElementById("notti").addEventListener("input", aggiorna);
+})();
+</script>
 {% endblock %}

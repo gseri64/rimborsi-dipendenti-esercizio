@@ -93,6 +93,6 @@ def test_riepilogo_mostra_totali(client):
 
 def test_normativa_mostra_massimali_vigenti(client):
     testo = client.get("/normativa").get_data(as_text=True)
-    assert "46.48" in testo
-    assert "77.47" in testo
-    assert "1200.00" in testo
+    assert "50.00" in testo    # trasferta italia 2026
+    assert "85.00" in testo    # trasferta estero 2026
+    assert "1400.00" in testo  # plafond mensile 2026
